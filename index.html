@@ -58,6 +58,17 @@ input[type=text]:focus,textarea:focus{outline:none;border-color:var(--brand)}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .pair div{border-radius:12px;padding:10px 12px;font-size:14px}
 .no{background:#fbe9e8;border:1px solid #f1c6c4}.yes{background:#e6f3ea;border:1px solid #bfe0c9}
+.gsave{display:block;width:calc(100% - 28px);margin:4px 14px 14px;border:0;border-radius:12px;padding:12px;font-size:16px;font-weight:800;font-family:inherit;background:var(--ok);color:#fff}
+.group.locked h2{background:#e6f3ea}
+.group.locked .item{opacity:.7}
+.unlock{border:0;background:none;color:var(--dim);font-size:13px;text-decoration:underline;font-family:inherit;padding:0 0 0 8px}
+.hist{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.hist h3{margin:0;font-size:17px}
+.hist .meta{font-size:13px;color:var(--dim);margin:2px 0 10px}
+.hist .row{display:flex;gap:8px}
+.hist .btn{padding:10px 6px;font-size:14px}
+.danger{background:#fbe9e8;color:var(--bad)}
+.empty{color:var(--dim);text-align:center;padding:40px 10px}
 .hide{display:none}
 </style>
 </head>
@@ -66,6 +77,7 @@ input[type=text]:focus,textarea:focus{outline:none;border-color:var(--brand)}
 (function(){
 var SAVED = window.__POTATO_SAVED__ || null;
 var KEY = "potato_v1";
+var HKEY = "potato_hist_v1";
 var POTATO = '<svg width="52" height="56" viewBox="0 0 52 56" aria-hidden="true"><ellipse cx="26" cy="30" rx="21" ry="24" fill="#c98b4a"/><ellipse cx="26" cy="29" rx="18.5" ry="21.5" fill="#e3a967"/><circle cx="15" cy="20" r="1.8" fill="#b97a3c"/><circle cx="36" cy="40" r="1.6" fill="#b97a3c"/><circle cx="33" cy="16" r="1.3" fill="#b97a3c"/><ellipse cx="19" cy="30" rx="2.4" ry="3.2" fill="#3a2614"/><ellipse cx="33" cy="30" rx="2.4" ry="3.2" fill="#3a2614"/><path d="M21 37 Q26 41 31 37" stroke="#3a2614" stroke-width="2.2" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="36" rx="3" ry="2" fill="#f0927a" opacity=".7"/><ellipse cx="38" cy="36" rx="3" ry="2" fill="#f0927a" opacity=".7"/><path d="M26 6 Q27 1 31 2" stroke="#4f9a5b" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="32" cy="3" rx="4" ry="2.4" fill="#64b56f" transform="rotate(-20 32 3)"/></svg>';
 
 var GROUPS = [
@@ -134,51 +146,69 @@ var PAIRS = [
  ["只拍食物，没拍招牌和价钱牌","一到店先拍证据"]
 ];
 
-function blank(){return {shop:"", ticks:{}, info:{}, notes:"", savedAt:null};}
+function blank(){return {id:"s"+Date.now(), shop:"", ticks:{}, info:{}, notes:"", locked:{}, savedAt:null};}
+function loadHist(){ try{ return JSON.parse(localStorage.getItem(HKEY)||"[]")||[]; }catch(e){ return []; } }
+function saveHist(h){ try{ localStorage.setItem(HKEY, JSON.stringify(h)); }catch(e){} }
+var VIEW = null;
+if(!SAVED){ var vm = location.hash.match(/^#view=(.+)$/); if(vm){ var vid=decodeURIComponent(vm[1]); loadHist().forEach(function(x){ if(x.id===vid) VIEW=x; }); if(VIEW) SAVED=VIEW; } }
+window.addEventListener("hashchange", function(){ location.reload(); });
 var state = blank();
 try{ if(SAVED){ state = SAVED; } else { var raw = localStorage.getItem(KEY); if(raw) state = JSON.parse(raw); } }catch(e){}
+if(!state.locked) state.locked = {};
+if(!state.ticks) state.ticks = {};
+if(!state.info) state.info = {};
+if(!state.id){ state.id = "s"+Date.now(); }
 function persist(){ if(SAVED) return; try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 
 function el(tag, attrs, html){ var n=document.createElement(tag); if(attrs) for(var k in attrs){ if(k==="class") n.className=attrs[k]; else n.setAttribute(k,attrs[k]); } if(html!=null) n.innerHTML=html; return n; }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
 function allItems(){ var a=[]; GROUPS.forEach(function(g){ g.items.forEach(function(i){ a.push(i); }); }); return a; }
-function isDone(i){ return i.input ? !!(state.info[i.id]||"").trim() : !!state.ticks[i.id]; }
+function isDoneIn(st,i){ return i.input ? !!((st.info||{})[i.id]||"").trim() : !!(st.ticks||{})[i.id]; }
+function isDone(i){ return isDoneIn(state,i); }
+function stamp(){ var d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+" "+d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes(); }
+function hasContent(){ if((state.shop||"").trim()) return true; for(var k in state.ticks) if(state.ticks[k]) return true; for(var j in state.info) if((state.info[j]||"").trim()) return true; return false; }
+function archive(){ if(SAVED || !hasContent()) return; var snap=JSON.parse(JSON.stringify(state)); snap.savedAt=stamp(); snap.mmdd=today(); var h=loadHist().filter(function(x){ return x.id!==snap.id; }); h.unshift(snap); saveHist(h); }
 function today(){ var d=new Date(); return (d.getMonth()+1<10?"0":"")+(d.getMonth()+1)+(d.getDate()<10?"0":"")+d.getDate(); }
 
 var root = el("div");
 document.body.appendChild(root);
 root.appendChild(el("header",null, POTATO+'<div><h1>Potato成长视频计划</h1><p>探店拍摄清单 · 拍完一样勾一样</p></div>'));
 var tabs = el("div",{class:"tabs"});
-var t1 = el("button",{class:"tab on",type:"button"},"清单"), t2 = el("button",{class:"tab",type:"button"},"详细说明");
-tabs.appendChild(t1); tabs.appendChild(t2); root.appendChild(tabs);
-var main1 = el("main"), main2 = el("main",{class:"hide"});
-root.appendChild(main1); root.appendChild(main2);
-function showTab(n){ t1.className="tab"+(n===1?" on":""); t2.className="tab"+(n===2?" on":""); main1.className=n===1?"":"hide"; main2.className=n===2?"":"hide"; actions.style.display=n===1?"flex":"none"; window.scrollTo(0,0); }
-t1.onclick=function(){showTab(1);}; t2.onclick=function(){showTab(2);};
+var t1 = el("button",{class:"tab on",type:"button"},"清单"), t2 = el("button",{class:"tab",type:"button"},"详细说明"), t3 = el("button",{class:"tab",type:"button"},"记录");
+tabs.appendChild(t1); tabs.appendChild(t2); if(!SAVED) tabs.appendChild(t3); root.appendChild(tabs);
+var main1 = el("main"), main2 = el("main",{class:"hide"}), main3 = el("main",{class:"hide"});
+root.appendChild(main1); root.appendChild(main2); root.appendChild(main3);
+function showTab(n){ [t1,t2,t3].forEach(function(t,ix){ t.className="tab"+(n===ix+1?" on":""); }); [main1,main2,main3].forEach(function(m,ix){ m.className=n===ix+1?"":"hide"; }); actions.style.display=n===1?"flex":"none"; if(n===3) renderHist(); window.scrollTo(0,0); }
+t1.onclick=function(){showTab(1);}; t2.onclick=function(){showTab(2);}; t3.onclick=function(){showTab(3);};
 
 // ---- tab 1: checklist ----
 if(!SAVED){ main1.appendChild(el("div",{class:"banner"},"提示：如果是在 WhatsApp 里打开，请按右上角 ⋯ 选「用 Chrome / Safari 打开」，打勾才会保存。")); }
-if(SAVED){ main1.appendChild(el("div",{class:"banner"},"这是 <b>"+esc(state.shop||"未命名店")+"</b> 的拍摄存档"+(state.savedAt?"（保存于 "+esc(state.savedAt)+"）":"")+"。")); }
+if(SAVED){ var bn=el("div",{class:"banner"},"这是 <b>"+esc(state.shop||"未命名店")+"</b> 的拍摄存档"+(state.savedAt?"（保存于 "+esc(state.savedAt)+"）":"")+"。"); if(VIEW){ var back=el("button",{class:"btn ghost",type:"button",style:"margin-top:8px;width:100%"},"← 返回记录"); back.onclick=function(){ location.hash="hist"; }; bn.appendChild(back); } main1.appendChild(bn); }
 var shopBox = el("div",{class:"shop"});
 shopBox.appendChild(el("label",null,"店名（保存的文件会用这个名字）"));
 var shopIn = el("input",{type:"text",placeholder:"例如：R98麻辣火锅"}); shopIn.value = state.shop||"";
 shopIn.oninput=function(){ state.shop=shopIn.value; persist(); };
+if(SAVED) shopIn.readOnly=true;
 shopBox.appendChild(shopIn); main1.appendChild(shopBox);
 var prog = el("div",{class:"prog"},'<div class="bar"><i></i></div><div class="progtxt"><span class="p1"></span><span class="p2"></span></div>');
 main1.appendChild(prog);
 var counters = {};
 GROUPS.forEach(function(g){
- var box = el("div",{class:"group"}); var h = el("h2",null, esc(g.name)+' <span></span>'); counters[g.id]=h.querySelector("span"); box.appendChild(h);
+ var box = el("div",{class:"group"}); var h = el("h2",null, esc(g.name)+' <span><b class="cnt" style="font-weight:600"></b></span>'); counters[g.id]=h.querySelector(".cnt"); box.appendChild(h);
+ var ul = el("button",{class:"unlock",type:"button"},"解锁"); ul.onclick=function(){ state.locked[g.id]=false; persist(); refresh(); }; h.querySelector("span").appendChild(ul); g._ul=ul; g._box=box;
  g.items.forEach(function(i){
   var row = el("div",{class:"item"}); var c = el("div",{class:"chk",role:"checkbox"}); var t = el("div",{class:"t"},'<div class="main">'+esc(i.t)+'</div>'+(i.s?'<div class="sub">'+esc(i.s)+'</div>':''));
   row.appendChild(c); row.appendChild(t);
-  if(i.input){ var inp = el("input",{type:"text",placeholder:"填这里"}); inp.value = state.info[i.id]||""; inp.oninput=function(){ state.info[i.id]=inp.value; persist(); refresh(); }; t.appendChild(inp); c.onclick=function(){ inp.focus(); }; }
-  else { row.onclick=function(){ state.ticks[i.id]=!state.ticks[i.id]; persist(); refresh(); }; }
+  if(i.input){ var inp = el("input",{type:"text",placeholder:"填这里"}); inp.value = state.info[i.id]||""; inp.oninput=function(){ state.info[i.id]=inp.value; persist(); refresh(); }; t.appendChild(inp); c.onclick=function(){ if(!inp.disabled) inp.focus(); }; i._inp=inp; }
+  else { row.onclick=function(){ if(SAVED || state.locked[g.id]) return; state.ticks[i.id]=!state.ticks[i.id]; persist(); refresh(); }; }
   i._row=row; box.appendChild(row);
  });
+ var gb = el("button",{class:"gsave",type:"button"},"保存这部分 ✓");
+ gb.onclick=function(){ state.locked[g.id]=true; persist(); refresh(); sendPart(g); };
+ box.appendChild(gb); g._btn=gb;
  main1.appendChild(box);
 });
-var notes = el("div",{class:"notes"},"<h2>备注</h2>"); var ta = el("textarea",{rows:"3",placeholder:"有什么要跟老板讲的，写这里"}); ta.value = state.notes||""; ta.oninput=function(){ state.notes=ta.value; persist(); }; notes.appendChild(ta); main1.appendChild(notes);
+var notes = el("div",{class:"notes"},"<h2>备注</h2>"); var ta = el("textarea",{rows:"3",placeholder:"有什么要跟老板讲的，写这里"}); ta.value = state.notes||""; ta.oninput=function(){ state.notes=ta.value; persist(); }; if(SAVED) ta.readOnly=true; notes.appendChild(ta); main1.appendChild(notes);
 
 function refresh(){
  var items=allItems(), done=items.filter(isDone).length;
@@ -186,7 +216,14 @@ function refresh(){
  prog.querySelector(".p1").textContent="完成 "+done+" / "+items.length;
  prog.querySelector(".p2").textContent=done===items.length?"全部完成 👍":"还差 "+(items.length-done)+" 样";
  items.forEach(function(i){ i._row.className="item"+(isDone(i)?" done":""); });
- GROUPS.forEach(function(g){ var d=g.items.filter(isDone).length; counters[g.id].textContent=d+"/"+g.items.length; });
+ GROUPS.forEach(function(g){
+  var d=g.items.filter(isDone).length, n=g.items.length, lk=!!state.locked[g.id];
+  counters[g.id].textContent=(lk?"已保存 ✓ ":"")+d+"/"+n;
+  g._box.className="group"+(lk?" locked":"");
+  g._btn.style.display=(d===n && !lk && !SAVED)?"block":"none";
+  g._ul.style.display=(lk && !SAVED)?"":"none";
+  g.items.forEach(function(i){ if(i._inp) i._inp.disabled = lk || !!SAVED; });
+ });
 }
 refresh();
 
@@ -210,9 +247,9 @@ actions.appendChild(bSave); actions.appendChild(bCopy); actions.appendChild(bNew
 document.body.appendChild(actions);
 var toastEl = el("div",{class:"toast"}); document.body.appendChild(toastEl);
 function toast(m){ toastEl.textContent=m; toastEl.className="toast show"; clearTimeout(toast._t); toast._t=setTimeout(function(){toastEl.className="toast";},2600); }
-var modal = el("div",{class:"modal"},'<div class="box"><b>开始新店？</b><p style="margin:8px 0 0;color:#8a8073;font-size:15px">现在的打勾和资料会清空。还没保存的话，先按「保存 / 发给老板」。</p><div class="row"><button class="btn ghost" type="button" data-x="no">取消</button><button class="btn primary" type="button" data-x="yes">清空，开始新店</button></div></div>');
+var modal = el("div",{class:"modal"},'<div class="box"><b>开始新店？</b><p style="margin:8px 0 0;color:#8a8073;font-size:15px">现在这间店会自动存进「记录」，然后清空，开始新店。</p><div class="row"><button class="btn ghost" type="button" data-x="no">取消</button><button class="btn primary" type="button" data-x="yes">清空，开始新店</button></div></div>');
 document.body.appendChild(modal);
-modal.onclick=function(e){ var x=e.target.getAttribute("data-x"); if(x==="yes"){ state=blank(); persist(); location.reload(); } if(x==="no"||e.target===modal) modal.className="modal"; };
+modal.onclick=function(e){ var x=e.target.getAttribute("data-x"); if(x==="yes"){ archive(); state=blank(); persist(); location.reload(); } if(x==="no"||e.target===modal) modal.className="modal"; };
 bNew.onclick=function(){ modal.className="modal show"; };
 if(SAVED){ bNew.style.display="none"; }
 
@@ -222,20 +259,31 @@ function summary(){
  if((state.notes||"").trim()) lines.push("备注："+state.notes.trim());
  return lines.join("\n");
 }
-bCopy.onclick=function(){
- var s=summary();
- try{ navigator.clipboard.writeText(s).then(function(){ toast("已复制，去 WhatsApp 贴给老板"); }, function(){ fallbackCopy(s); }); }catch(e){ fallbackCopy(s); }
-};
-function fallbackCopy(s){ var t=el("textarea"); t.value=s; document.body.appendChild(t); t.select(); try{ document.execCommand("copy"); toast("已复制"); }catch(e){ toast("复制不到，请截图"); } t.remove(); }
+function copyText(s, msg){
+ try{ navigator.clipboard.writeText(s).then(function(){ toast(msg); }, function(){ fallbackCopy(s, msg); }); }catch(e){ fallbackCopy(s, msg); }
+}
+function fallbackCopy(s, msg){ var t=el("textarea"); t.value=s; document.body.appendChild(t); t.select(); try{ document.execCommand("copy"); toast(msg||"已复制"); }catch(e){ toast("复制不到，请截图"); } t.remove(); }
+bCopy.onclick=function(){ copyText(summary(), "已复制，去 WhatsApp 贴给老板"); };
+function partText(g){
+ var lines=["【Potato · "+(state.shop||"未命名店")+"】"+g.name+" ✅ 完成"];
+ g.items.forEach(function(i){ lines.push("✅ "+i.t+(i.input?" ："+((state.info[i.id]||"").trim()):"")); });
+ return lines.join("\n");
+}
+function sendPart(g){
+ var s=partText(g), msg="「"+g.name+"」已保存，文字已复制，可以贴到 WhatsApp";
+ if(navigator.share){ navigator.share({text:s}).then(function(){ toast("「"+g.name+"」已保存并发出"); }, function(){ copyText(s, msg); }); }
+ else copyText(s, msg);
+}
 
-function snapshot(){
+function snapshot(st){
+ st = st || state;
  var css=document.getElementById("css").textContent, app=document.getElementById("app").textContent;
- var snap=JSON.parse(JSON.stringify(state)); var d=new Date(); snap.savedAt=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+" "+d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes();
+ var snap=JSON.parse(JSON.stringify(st)); if(st===state || !snap.savedAt) snap.savedAt=stamp();
  var data=JSON.stringify(snap).replace(/</g,"\\x3c");
  var S="scr"+"ipt";
- return "<!DOCTYPE html>\n<html lang=\"zh\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Potato成长视频计划 · "+esc(state.shop||"未命名店")+"</title><style id=\"css\">"+css+"</style></head><body><"+S+">window.__POTATO_SAVED__="+data+";</"+S+"><"+S+" id=\"app\">"+app+"</"+S+"></body></html>";
+ return "<!DOCTYPE html>\n<html lang=\"zh\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Potato成长视频计划 · "+esc(st.shop||"未命名店")+"</title><style id=\"css\">"+css+"</style></head><body><"+S+">window.__POTATO_SAVED__="+data+";</"+S+"><"+S+" id=\"app\">"+app+"</"+S+"></body></html>";
 }
-function fileName(){ var n=(state.shop||"未命名店").replace(/[\\\/:*?"<>|\s]+/g,""); return "Potato成长视频计划_"+n+"_"+today()+".html"; }
+function fileName(st){ st = st || state; var n=(st.shop||"未命名店").replace(/[\\\/:*?"<>|\s]+/g,""); return "Potato成长视频计划_"+n+"_"+(st.mmdd||today())+".html"; }
 
 var downloads=null;
 bSave.style.display = SAVED ? "none" : "";
@@ -253,16 +301,37 @@ function linkSave(name, blob){
  try{
   var url=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=url; a.download=name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},4000);
-  toast("已下载："+name+"，去 WhatsApp 发给老板");
+  toast("已下载："+name+"（已存进「记录」），去 WhatsApp 发给老板");
  }catch(e){ toast("保存不到，请按「复制文字」"); }
 }
 bSave.onclick=function(){
  if(!(state.shop||"").trim()){ toast("先填店名"); shopIn.focus(); return; }
+ archive();
  var name=fileName(), html=snapshot();
  if(downloads){
   downloads.save({filename:name, data:html}).then(function(){ toast("已保存："+name); }, function(e){ var c=e&&e.code; if(c==="declined") toast("取消了"); else if(c==="rate_limited") toast("稍等一下再按"); else nativeSave(name, html); });
  } else { nativeSave(name, html); }
 };
+function renderHist(){
+ main3.innerHTML="";
+ var h=loadHist(), tot=allItems().length;
+ if(!h.length){ main3.appendChild(el("div",{class:"empty"},"还没有记录。<br>拍完一间店按「保存 / 发给老板」或「新店」，就会存在这里。")); return; }
+ main3.appendChild(el("div",{class:"rule"},"共 "+h.length+" 间店。记录只存在这部手机，换手机前记得每间都发给老板。"));
+ h.forEach(function(st){
+  var done=allItems().filter(function(i){ return isDoneIn(st,i); }).length;
+  var c=el("div",{class:"hist"},"<h3>"+esc(st.shop||"未命名店")+"</h3><div class=\"meta\">"+esc(st.savedAt||"")+" · 完成 "+done+" / "+tot+"</div>");
+  var row=el("div",{class:"row"});
+  var bv=el("button",{class:"btn ghost",type:"button"},"查看"), br=el("button",{class:"btn primary",type:"button"},"再发一次"), bd=el("button",{class:"btn danger",type:"button"},"删除");
+  bv.onclick=function(){ location.hash="view="+encodeURIComponent(st.id); };
+  br.onclick=function(){ nativeSave(fileName(st), snapshot(st)); };
+  bd.onclick=function(){
+   if(bd.getAttribute("data-sure")){ saveHist(loadHist().filter(function(x){ return x.id!==st.id; })); renderHist(); toast("已删除"); return; }
+   bd.setAttribute("data-sure","1"); bd.textContent="确定删除？"; setTimeout(function(){ bd.removeAttribute("data-sure"); bd.textContent="删除"; },3000);
+  };
+  row.appendChild(bv); row.appendChild(br); row.appendChild(bd); c.appendChild(row); main3.appendChild(c);
+ });
+}
+if(!SAVED && location.hash==="#hist") showTab(3);
 if(!SAVED && window.claude && window.claude.use){ window.claude.use("downloads").then(function(d){ downloads=d; }).catch(function(){}); }
 })();
 </script>
