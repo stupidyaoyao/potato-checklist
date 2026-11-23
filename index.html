@@ -69,6 +69,23 @@ input[type=text]:focus,textarea:focus{outline:none;border-color:var(--brand)}
 .hist .btn{padding:10px 6px;font-size:14px}
 .danger{background:#fbe9e8;color:var(--bad)}
 .empty{color:var(--dim);text-align:center;padding:40px 10px}
+.modes{display:flex;gap:6px;margin:0 16px 4px;background:#efe6d6;border-radius:14px;padding:4px}
+.mode{flex:1;border:0;border-radius:11px;padding:10px;font-size:16px;font-weight:800;background:transparent;color:var(--dim);font-family:inherit}
+.mode.on{background:#fff;color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.tabs.many{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs.many::-webkit-scrollbar{display:none}
+.tabs.many .tab{flex:0 0 auto;padding:11px 15px;font-size:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:10px}
+.card h3{margin:0 0 6px;font-size:17px;display:flex;align-items:center;gap:8px}
+.card p{margin:0;font-size:15px}
+.card textarea{margin-top:4px;font-size:16px}
+.cn{flex:0 0 26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
+.ref{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 14px;margin-bottom:8px;color:var(--ink);text-decoration:none}
+.ref b{display:block;font-size:15px;color:var(--brand)}
+.ref span{font-size:13px;color:var(--dim)}
+.vidwrap{background:#000;border-radius:16px;overflow:hidden;margin-bottom:10px;max-width:340px;margin-left:auto;margin-right:auto;aspect-ratio:9/16}
+.vidwrap video{width:100%;height:100%;display:block;object-fit:contain}
+.vo{background:#fff7e8;border-left:4px solid var(--brand2);padding:6px 10px!important;border-radius:6px;margin-top:6px!important}
 .hide{display:none}
 </style>
 </head>
@@ -76,11 +93,10 @@ input[type=text]:focus,textarea:focus{outline:none;border-color:var(--brand)}
 <script id="app">
 (function(){
 var SAVED = window.__POTATO_SAVED__ || null;
-var KEY = "potato_v1";
-var HKEY = "potato_hist_v1";
 var POTATO = '<svg width="52" height="56" viewBox="0 0 52 56" aria-hidden="true"><ellipse cx="26" cy="30" rx="21" ry="24" fill="#c98b4a"/><ellipse cx="26" cy="29" rx="18.5" ry="21.5" fill="#e3a967"/><circle cx="15" cy="20" r="1.8" fill="#b97a3c"/><circle cx="36" cy="40" r="1.6" fill="#b97a3c"/><circle cx="33" cy="16" r="1.3" fill="#b97a3c"/><ellipse cx="19" cy="30" rx="2.4" ry="3.2" fill="#3a2614"/><ellipse cx="33" cy="30" rx="2.4" ry="3.2" fill="#3a2614"/><path d="M21 37 Q26 41 31 37" stroke="#3a2614" stroke-width="2.2" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="36" rx="3" ry="2" fill="#f0927a" opacity=".7"/><ellipse cx="38" cy="36" rx="3" ry="2" fill="#f0927a" opacity=".7"/><path d="M26 6 Q27 1 31 2" stroke="#4f9a5b" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="32" cy="3" rx="4" ry="2.4" fill="#64b56f" transform="rotate(-20 32 3)"/></svg>';
 
-var GROUPS = [
+// =================== 探店 data ===================
+var T_GROUPS = [
  {id:"g1", name:"出发前", items:[
   {id:"a1", t:"跟老板讲好今天来拍，问清楚哪里可以拍、哪些人不要拍到"},
   {id:"a2", t:"手机直拍（竖的）", s:"4K 30fps 或 1080p 60fps"},
@@ -110,7 +126,6 @@ var GROUPS = [
  {id:"g5", name:"收工前", items:[
   {id:"e1", t:"用 Google Drive 或 AirDrop 交原档", s:"不要用 WhatsApp，画质会被压糊"}]}
 ];
-
 var SHOTS = [
  ["开场钩子","最好吃那一刻：夹起、切开、拉丝、淋酱、冒烟","很近拍，动作慢，要有声","5–10秒 × 3条"],
  ["地标出发","有名的地方（桥、塔、老建筑、大字招牌）","尽量白天；手机架放仪表板，地标要入镜，车子在走才拍","10秒 × 2段"],
@@ -146,7 +161,82 @@ var PAIRS = [
  ["只拍食物，没拍招牌和价钱牌","一到店先拍证据"]
 ];
 
-function blank(){return {id:"s"+Date.now(), shop:"", ticks:{}, info:{}, notes:"", locked:{}, savedAt:null};}
+// =================== 销售日常 data ===================
+var S_GROUPS = [
+ {id:"s1", name:"出门前", items:[
+  {id:"sa1", t:"手机架装好在车上", s:"架在仪表板，镜头对着前面的路"},
+  {id:"sa2", t:"想好今天要讲的一件事", s:"一个故事、一个心得都可以"}]},
+ {id:"s2", name:"早上出发", items:[
+  {id:"sb1", t:"车尾箱的货", s:"打开车尾箱，拍满满的货 · 5 秒"},
+  {id:"sb2", t:"挡风玻璃外的路", s:"手机架好，开车前就按录影 · 10 秒 × 2 段"}]},
+ {id:"s3", name:"跑客户", items:[
+  {id:"sc1", t:"走进修车厂 / 店（第一视角）", s:"手机放胸口高度慢慢走 · 不拍客人的脸、不拍招牌"},
+  {id:"sc2", t:"手拿零件特写", s:"零件放手上给镜头看 · 5 秒"},
+  {id:"sc3", t:"开单 / 写单的手", s:"价钱、客户名字要遮住"},
+  {id:"sc4", t:"拜访完，走回车的背影或脚步", s:"讲完生意才拍 · 5 秒"}]},
+ {id:"s4", name:"休息", items:[
+  {id:"sd1", t:"午餐 / 路边档", s:"饭包、kopi、车里吃都可以 · 5–10 秒"},
+  {id:"sd2", t:"坐在车里的一刻", s:"拍方向盘、窗外，不用露脸"}]},
+ {id:"s5", name:"收工", items:[
+  {id:"se1", t:"里程表 / 今天开了几公里", s:"车停好才拍"},
+  {id:"se2", t:"回到家，停车熄火", s:"天黑的样子最有感觉"}]},
+ {id:"s6", name:"今天的数字（填好自动打勾）", items:[
+  {id:"sf1", t:"今天跑了几间", input:true},
+  {id:"sf2", t:"几个说不要 / 成交几单", input:true},
+  {id:"sf3", t:"今天最特别的一件事", input:true}]},
+ {id:"s7", name:"配音", items:[
+  {id:"sg1", t:"录一段语音发给老板", s:"车里熄火、关窗，像跟朋友讲今天发生什么，1–2 分钟"}]}
+];
+var LEARN = [
+ ["为什么会有人看？","不是因为你红，是因为「共鸣」。两种人会看：<br><b>① 做销售的同行</b>——看了会 tag 朋友：「你看，跟我们一样」。<br><b>② 想入行的人</b>——好奇销售到底是怎样。<br>所以越真越好，不用装、不用演。"],
+ ["不露脸也可以拍","只拍这三样就够：<br><b>手</b>——拿零件、写单、握方向盘。<br><b>你看到的</b>——第一视角走进修车厂、车外的路。<br><b>东西</b>——车尾箱的货、零件、目录。<br>想露的话，背影、侧面就好。"],
+ ["不影响做工","每段 5–15 秒就够，拍完马上收手机。<br>跟客人讲生意的时候<b>不拍</b>，拍「之前」和「之后」。<br>开车不拿手机：手机先架好、按录影，才开车。"],
+ ["配音：两个方法","<b>A. 自己讲（最真）</b>：收工后在车里，熄火、关窗，手机离嘴巴一个拳头，像跟朋友讲今天发生什么，录 1–2 分钟发给老板。<br><b>B. AI 声音</b>：录一次 2–3 分钟清楚的声音，我们做出像你的声音来配。要你同意才做，视频会写「AI配音」。<br>可以混着用：故事用你的声音，介绍用 AI。"],
+ ["开头 3 秒最重要","第一句话就要让人停下来，例如：<br>「今天又被老板赶出来了……」<br>「跑了 8 间，只成交 1 间。」<br>「人家以为卖零件很好赚？」"],
+ ["不能拍 / 不能讲","× 客人的脸、店名招牌（老板 OK 才可以）<br>× 价钱单、公司文件、客户名字<br>× 在视频里讲客人坏话<br>× 开车时拿手机<br>先问公司：可不可以拍工作？"]
+];
+var FORMATS = [
+ ["一天跟拍","早上出门 → 开车 → 跑 3–4 间 → 午餐 → 收工回家。","车尾箱、路、走进店、零件、午餐、里程表","「早上八点，车尾箱塞满货，今天要跑六间修车厂。」"],
+ ["真实案例","一件真的发生的事：被拒绝、被骂、收不到钱、客人要的零件没货。","店外远远拍（不拍脸）、走回车的背影、坐在车里","「这间老板我跑了三次，第三次他终于肯看货……」"],
+ ["迷思 vs 现实","人家以为 vs 真实情况，一句对一句。","两组对比画面：舒服的冷气车 vs 塞车、等老板","「人家以为开车到处走很爽。现实：油钱自己出，等老板等一个钟。」"],
+ ["车里心声","一个心得、一个感受，30 秒就好。","挡风玻璃外、手握方向盘（车停好）","「做销售第五年，我学到一件事……」"],
+ ["数字日记","今天的数字：几间、几公里、几个说不要、几单。","里程表、单据（遮价钱）、零件","「今天：九间，一百八十公里，七个说不要，两单。」"],
+ ["新人问答","拿留言区的问题来回答。","零件特写、货架、车里","「有人问：卖零件要不要懂修车？我老实讲……」"]
+];
+var ASK = [
+ ["q1","你卖哪些零件？哪几样最多人买？"],
+ ["q2","你的客人是谁？（修车厂、零件店、摩托店……）"],
+ ["q3","最难忘的被拒绝 / 被骂的经历？"],
+ ["q4","最开心的一次成交？"],
+ ["q5","人家对卖零件最大的误会是什么？"],
+ ["q6","普通一天：几点出门、跑几间、几点回家？"],
+ ["q7","新人入行最容易犯的错？"],
+ ["q8","有什么好笑 / 奇怪的客人故事？"],
+ ["q9","你自己想拍什么题目？"]
+];
+var REFS = [
+ ["抖音 · 00后汽车销售打工日常 vlog","日常跟拍格式：上班、吃饭、见客","https://www.douyin.com/video/7633238248504700137"],
+ ["抖音 · 会计公司业务员扫街","最像我们要的：一间一间走进店，被拒绝也照拍","https://www.douyin.com/shipin/7645863093658044467"],
+ ["抖音 · 外卖小哥 vlog「你看到的不是我的工作，只是我的生活」","不露脸第一视角，靠旁白讲感受","https://www.douyin.com/video/7627433294842682853"],
+ ["界面新闻 · 社恐销售开始拍工作日常，一个月成交两单","社恐也可以拍；拍日常比拍专业知识更多人看","https://www.jiemian.com/article/12367186.html"],
+ ["TikTok · 汽车销售 Kudos：成交后销售在做什么","幕后格式：让人看到工作的另一面","https://www.dailydot.com/news/what-car-salesman-does-after-you-buy"]
+];
+
+// =================== modes ===================
+var MODES = {
+ tandian:{ label:"探店", key:"potato_v1", hkey:"potato_hist_v1", groups:T_GROUPS, title:"Potato成长视频计划", sub:"探店拍摄清单 · 拍完一样勾一样",
+  nameLabel:"店名（保存的文件会用这个名字）", namePh:"例如：R98麻辣火锅", nameNeed:"先填店名", prefix:"Potato成长视频计划", noteLabel:"备注", notePh:"有什么要跟老板讲的，写这里",
+  tabs:[["清单","check"],["详细说明","tdetail"],["记录","hist"]] },
+ sales:{ label:"销售日常", key:"potato_sales_v1", hkey:"potato_sales_hist_v1", groups:S_GROUPS, title:"Potato销售日常", sub:"汽车零件销售 · 真实日常拍摄",
+  nameLabel:"今天的题目（保存的文件会用这个名字）", namePh:"例如：又被老板赶出来", nameNeed:"先填今天的题目", prefix:"Potato销售日常", noteLabel:"今天发生什么（简单写）", notePh:"例如：第三间老板叫我下个月再来……",
+  tabs:[["教学","learn"],["格式","formats"],["清单","check"],["问Potato","ask"],["记录","hist"]] }
+};
+var MODE = "tandian";
+try{ MODE = SAVED ? (SAVED.mode || "tandian") : (localStorage.getItem("potato_mode") || "tandian"); }catch(e){}
+if(!MODES[MODE]) MODE = "tandian";
+var M = MODES[MODE], GROUPS = M.groups, KEY = M.key, HKEY = M.hkey;
+
+function blank(){return {id:"s"+Date.now(), mode:MODE, shop:"", ticks:{}, info:{}, notes:"", locked:{}, savedAt:null};}
 function loadHist(){ try{ return JSON.parse(localStorage.getItem(HKEY)||"[]")||[]; }catch(e){ return []; } }
 function saveHist(h){ try{ localStorage.setItem(HKEY, JSON.stringify(h)); }catch(e){} }
 var VIEW = null;
@@ -158,6 +248,7 @@ if(!state.locked) state.locked = {};
 if(!state.ticks) state.ticks = {};
 if(!state.info) state.info = {};
 if(!state.id){ state.id = "s"+Date.now(); }
+state.mode = MODE;
 function persist(){ if(SAVED) return; try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
 
 function el(tag, attrs, html){ var n=document.createElement(tag); if(attrs) for(var k in attrs){ if(k==="class") n.className=attrs[k]; else n.setAttribute(k,attrs[k]); } if(html!=null) n.innerHTML=html; return n; }
@@ -166,27 +257,50 @@ function allItems(){ var a=[]; GROUPS.forEach(function(g){ g.items.forEach(funct
 function isDoneIn(st,i){ return i.input ? !!((st.info||{})[i.id]||"").trim() : !!(st.ticks||{})[i.id]; }
 function isDone(i){ return isDoneIn(state,i); }
 function stamp(){ var d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()+" "+d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes(); }
+function today(){ var d=new Date(); return (d.getMonth()+1<10?"0":"")+(d.getMonth()+1)+(d.getDate()<10?"0":"")+d.getDate(); }
 function hasContent(){ if((state.shop||"").trim()) return true; for(var k in state.ticks) if(state.ticks[k]) return true; for(var j in state.info) if((state.info[j]||"").trim()) return true; return false; }
 function archive(){ if(SAVED || !hasContent()) return; var snap=JSON.parse(JSON.stringify(state)); snap.savedAt=stamp(); snap.mmdd=today(); var h=loadHist().filter(function(x){ return x.id!==snap.id; }); h.unshift(snap); saveHist(h); }
-function today(){ var d=new Date(); return (d.getMonth()+1<10?"0":"")+(d.getMonth()+1)+(d.getDate()<10?"0":"")+d.getDate(); }
 
+// ---- layout ----
 var root = el("div");
 document.body.appendChild(root);
-root.appendChild(el("header",null, POTATO+'<div><h1>Potato成长视频计划</h1><p>探店拍摄清单 · 拍完一样勾一样</p></div>'));
-var tabs = el("div",{class:"tabs"});
-var t1 = el("button",{class:"tab on",type:"button"},"清单"), t2 = el("button",{class:"tab",type:"button"},"详细说明"), t3 = el("button",{class:"tab",type:"button"},"记录");
-tabs.appendChild(t1); tabs.appendChild(t2); if(!SAVED) tabs.appendChild(t3); root.appendChild(tabs);
-var main1 = el("main"), main2 = el("main",{class:"hide"}), main3 = el("main",{class:"hide"});
-root.appendChild(main1); root.appendChild(main2); root.appendChild(main3);
-function showTab(n){ [t1,t2,t3].forEach(function(t,ix){ t.className="tab"+(n===ix+1?" on":""); }); [main1,main2,main3].forEach(function(m,ix){ m.className=n===ix+1?"":"hide"; }); actions.style.display=n===1?"flex":"none"; if(n===3) renderHist(); window.scrollTo(0,0); }
-t1.onclick=function(){showTab(1);}; t2.onclick=function(){showTab(2);}; t3.onclick=function(){showTab(3);};
+root.appendChild(el("header",null, POTATO+'<div><h1>'+esc(M.title)+'</h1><p>'+esc(M.sub)+'</p></div>'));
+if(!SAVED){
+ var modes = el("div",{class:"modes"});
+ ["tandian","sales"].forEach(function(k){
+  var b = el("button",{class:"mode"+(k===MODE?" on":""),type:"button"}, esc(MODES[k].label));
+  b.onclick=function(){ if(k===MODE) return; try{ localStorage.setItem("potato_mode",k); }catch(e){} location.hash=""; location.reload(); };
+  modes.appendChild(b);
+ });
+ root.appendChild(modes);
+}
+var tabs = el("div",{class:"tabs"+(M.tabs.length>3?" many":"")});
+root.appendChild(tabs);
+var TABS = [];
+M.tabs.forEach(function(t){
+ if(SAVED && (t[1]==="hist" || t[1]==="ask")) return;
+ var b = el("button",{class:"tab",type:"button"}, esc(t[0])), m = el("main",{class:"hide"});
+ tabs.appendChild(b); root.appendChild(m);
+ var rec = {name:t[0], kind:t[1], btn:b, main:m};
+ b.onclick=function(){ showTab(rec.kind); };
+ TABS.push(rec);
+});
+function tabMain(kind){ for(var i=0;i<TABS.length;i++) if(TABS[i].kind===kind) return TABS[i].main; return null; }
+function showTab(kind){
+ TABS.forEach(function(t){ t.btn.className="tab"+(t.kind===kind?" on":""); t.main.className=t.kind===kind?"":"hide"; });
+ actions.style.display = kind==="check" ? "flex" : "none";
+ if(kind==="hist") renderHist();
+ try{ if(!SAVED) localStorage.setItem("potato_tab_"+MODE, kind); }catch(e){}
+ window.scrollTo(0,0);
+}
 
-// ---- tab 1: checklist ----
+// ---- checklist tab ----
+var main1 = tabMain("check");
 if(!SAVED){ main1.appendChild(el("div",{class:"banner"},"提示：如果是在 WhatsApp 里打开，请按右上角 ⋯ 选「用 Chrome / Safari 打开」，打勾才会保存。")); }
-if(SAVED){ var bn=el("div",{class:"banner"},"这是 <b>"+esc(state.shop||"未命名店")+"</b> 的拍摄存档"+(state.savedAt?"（保存于 "+esc(state.savedAt)+"）":"")+"。"); if(VIEW){ var back=el("button",{class:"btn ghost",type:"button",style:"margin-top:8px;width:100%"},"← 返回记录"); back.onclick=function(){ location.hash="hist"; }; bn.appendChild(back); } main1.appendChild(bn); }
+if(SAVED){ var bn=el("div",{class:"banner"},"这是 <b>"+esc(state.shop||"未命名")+"</b> 的存档"+(state.savedAt?"（保存于 "+esc(state.savedAt)+"）":"")+"。"); if(VIEW){ var back=el("button",{class:"btn ghost",type:"button",style:"margin-top:8px;width:100%"},"← 返回记录"); back.onclick=function(){ location.hash="hist"; }; bn.appendChild(back); } main1.appendChild(bn); }
 var shopBox = el("div",{class:"shop"});
-shopBox.appendChild(el("label",null,"店名（保存的文件会用这个名字）"));
-var shopIn = el("input",{type:"text",placeholder:"例如：R98麻辣火锅"}); shopIn.value = state.shop||"";
+shopBox.appendChild(el("label",null,esc(M.nameLabel)));
+var shopIn = el("input",{type:"text",placeholder:M.namePh}); shopIn.value = state.shop||"";
 shopIn.oninput=function(){ state.shop=shopIn.value; persist(); };
 if(SAVED) shopIn.readOnly=true;
 shopBox.appendChild(shopIn); main1.appendChild(shopBox);
@@ -208,7 +322,7 @@ GROUPS.forEach(function(g){
  box.appendChild(gb); g._btn=gb;
  main1.appendChild(box);
 });
-var notes = el("div",{class:"notes"},"<h2>备注</h2>"); var ta = el("textarea",{rows:"3",placeholder:"有什么要跟老板讲的，写这里"}); ta.value = state.notes||""; ta.oninput=function(){ state.notes=ta.value; persist(); }; if(SAVED) ta.readOnly=true; notes.appendChild(ta); main1.appendChild(notes);
+var notes = el("div",{class:"notes"},"<h2>"+esc(M.noteLabel)+"</h2>"); var ta = el("textarea",{rows:"3",placeholder:M.notePh}); ta.value = state.notes||""; ta.oninput=function(){ state.notes=ta.value; persist(); }; if(SAVED) ta.readOnly=true; notes.appendChild(ta); main1.appendChild(notes);
 
 function refresh(){
  var items=allItems(), done=items.filter(isDone).length;
@@ -227,36 +341,84 @@ function refresh(){
 }
 refresh();
 
-// ---- tab 2: details ----
-main2.appendChild(el("h2",{class:"sec"},"必拍镜头（照顺序拍）"));
-main2.appendChild(el("div",{class:"rule"},"每个镜头拍 2–3 条，每条至少拿稳 5 秒。"));
-SHOTS.forEach(function(s,ix){ main2.appendChild(el("div",{class:"shot"},'<div class="num">'+(ix+1)+'</div><div><h3>'+esc(s[0])+'</h3><p><span class="k">拍什么</span> · '+esc(s[1])+'</p><p><span class="k">怎样拍</span> · '+esc(s[2])+'</p><p><span class="k">长度</span> · '+esc(s[3])+'</p></div>')); });
-main2.appendChild(el("h2",{class:"sec"},"拍摄基本功"));
-RULES.forEach(function(r,ix){ main2.appendChild(el("div",{class:"rule"},"<b>"+(ix+1)+". "+esc(r[0])+"</b>："+esc(r[1]))); });
-main2.appendChild(el("h2",{class:"sec"},"常犯错误 vs 正确做法"));
-PAIRS.forEach(function(p){ main2.appendChild(el("div",{class:"pair"},'<div class="no">✗ '+esc(p[0])+'</div><div class="yes">✓ '+esc(p[1])+'</div>')); });
-main2.appendChild(el("h2",{class:"sec"},"交片"));
-main2.appendChild(el("div",{class:"rule"},"每间店开一个文件夹，名字写「店名_日期」。用 Google Drive 或 AirDrop 传原档，不要自己剪、不要加滤镜。<br>拍完在「清单」按 <b>保存 / 发给老板</b>，把文件传给老板。"));
+// ---- 探店 details tab ----
+var mTD = tabMain("tdetail");
+if(mTD){
+ mTD.appendChild(el("h2",{class:"sec"},"必拍镜头（照顺序拍）"));
+ mTD.appendChild(el("div",{class:"rule"},"每个镜头拍 2–3 条，每条至少拿稳 5 秒。"));
+ SHOTS.forEach(function(s,ix){ mTD.appendChild(el("div",{class:"shot"},'<div class="num">'+(ix+1)+'</div><div><h3>'+esc(s[0])+'</h3><p><span class="k">拍什么</span> · '+esc(s[1])+'</p><p><span class="k">怎样拍</span> · '+esc(s[2])+'</p><p><span class="k">长度</span> · '+esc(s[3])+'</p></div>')); });
+ mTD.appendChild(el("h2",{class:"sec"},"拍摄基本功"));
+ RULES.forEach(function(r,ix){ mTD.appendChild(el("div",{class:"rule"},"<b>"+(ix+1)+". "+esc(r[0])+"</b>："+esc(r[1]))); });
+ mTD.appendChild(el("h2",{class:"sec"},"常犯错误 vs 正确做法"));
+ PAIRS.forEach(function(p){ mTD.appendChild(el("div",{class:"pair"},'<div class="no">✗ '+esc(p[0])+'</div><div class="yes">✓ '+esc(p[1])+'</div>')); });
+ mTD.appendChild(el("h2",{class:"sec"},"交片"));
+ mTD.appendChild(el("div",{class:"rule"},"每间店开一个文件夹，名字写「店名_日期」。用 Google Drive 或 AirDrop 传原档，不要自己剪、不要加滤镜。<br>拍完在「清单」按 <b>保存 / 发给老板</b>，把文件传给老板。"));
+}
+
+// ---- 销售 learn tab ----
+var mL = tabMain("learn");
+if(mL){
+ mL.appendChild(el("h2",{class:"sec",style:"margin-top:6px"},"先看示范（31 秒）"));
+ var vw = el("div",{class:"vidwrap"},'<video src="sales-sample.mp4" poster="sales-sample.jpg" controls playsinline preload="none"></video>');
+ mL.appendChild(vw);
+ mL.appendChild(el("div",{class:"rule"},"示范是画出来的，声音是 AI。你真的拍的时候，就照每一格上面写的「你拍这个」去拍。"));
+ mL.appendChild(el("h2",{class:"sec"},"教学"));
+ LEARN.forEach(function(c,ix){ mL.appendChild(el("div",{class:"card"},'<h3><span class="cn">'+(ix+1)+'</span>'+esc(c[0])+'</h3><p>'+c[1]+'</p>')); });
+ mL.appendChild(el("h2",{class:"sec"},"参考：别人怎样拍"));
+ REFS.forEach(function(r){ mL.appendChild(el("a",{class:"ref",href:r[2],target:"_blank",rel:"noopener"},'<b>'+esc(r[0])+'</b><span>'+esc(r[1])+'</span>')); });
+ mL.appendChild(el("h2",{class:"sec"},"交片"));
+ mL.appendChild(el("div",{class:"rule"},"原档用 Google Drive 或 AirDrop 传，不要用 WhatsApp（画质会糊）。语音可以用 WhatsApp。<br>拍完在「清单」按 <b>保存 / 发给老板</b>。"));
+}
+
+// ---- 销售 formats tab ----
+var mF = tabMain("formats");
+if(mF){
+ mF.appendChild(el("div",{class:"rule",style:"margin-top:6px"},"6 种视频，轮着拍。每一种都不用露脸。"));
+ FORMATS.forEach(function(f,ix){ mF.appendChild(el("div",{class:"shot"},'<div class="num">'+(ix+1)+'</div><div><h3>'+esc(f[0])+'</h3><p>'+esc(f[1])+'</p><p><span class="k">要拍</span> · '+esc(f[2])+'</p><p class="vo">'+esc(f[3])+'</p></div>')); });
+}
+
+// ---- 销售 ask tab ----
+var mA = tabMain("ask");
+var ASKKEY = "potato_ask_v1", ans = {};
+try{ ans = JSON.parse(localStorage.getItem(ASKKEY)||"{}")||{}; }catch(e){}
+if(mA){
+ mA.appendChild(el("div",{class:"rule",style:"margin-top:6px"},"你是这行的专家。随便答几题，答案会变成我们的视频题目。不用全部答，想到再填。"));
+ ASK.forEach(function(q){
+  var c = el("div",{class:"card"},'<h3>'+esc(q[1])+'</h3>');
+  var t = el("textarea",{rows:"3",placeholder:"写这里"}); t.value = ans[q[0]]||"";
+  t.oninput=function(){ ans[q[0]]=t.value; try{ localStorage.setItem(ASKKEY, JSON.stringify(ans)); }catch(e){} };
+  c.appendChild(t); mA.appendChild(c);
+ });
+ var sb = el("button",{class:"btn primary",type:"button",style:"width:100%;margin-top:6px"},"发给老板");
+ sb.onclick=function(){
+  var lines=["【Potato 问答】"], n=0;
+  ASK.forEach(function(q){ var a=(ans[q[0]]||"").trim(); if(a){ n++; lines.push("■ "+q[1]); lines.push(a); lines.push(""); } });
+  if(!n){ toast("还没有答案"); return; }
+  var s=lines.join("\n");
+  if(navigator.share){ navigator.share({text:s}).then(function(){ toast("已发出"); }, function(){ copyText(s,"已复制，去 WhatsApp 贴给老板"); }); } else copyText(s,"已复制，去 WhatsApp 贴给老板");
+ };
+ mA.appendChild(sb);
+}
 
 // ---- actions ----
 var actions = el("div",{class:"actions"});
 var bSave = el("button",{class:"btn primary",type:"button"},"保存 / 发给老板");
 var bCopy = el("button",{class:"btn ghost",type:"button"},"复制文字");
-var bNew = el("button",{class:"btn ghost",type:"button"},"新店");
+var bNew = el("button",{class:"btn ghost",type:"button"},MODE==="sales"?"新的一天":"新店");
 actions.appendChild(bSave); actions.appendChild(bCopy); actions.appendChild(bNew);
 document.body.appendChild(actions);
 var toastEl = el("div",{class:"toast"}); document.body.appendChild(toastEl);
 function toast(m){ toastEl.textContent=m; toastEl.className="toast show"; clearTimeout(toast._t); toast._t=setTimeout(function(){toastEl.className="toast";},2600); }
-var modal = el("div",{class:"modal"},'<div class="box"><b>开始新店？</b><p style="margin:8px 0 0;color:#8a8073;font-size:15px">现在这间店会自动存进「记录」，然后清空，开始新店。</p><div class="row"><button class="btn ghost" type="button" data-x="no">取消</button><button class="btn primary" type="button" data-x="yes">清空，开始新店</button></div></div>');
+var modal = el("div",{class:"modal"},'<div class="box"><b>'+(MODE==="sales"?"开始新的一天？":"开始新店？")+'</b><p style="margin:8px 0 0;color:#8a8073;font-size:15px">现在这份会自动存进「记录」，然后清空重新开始。</p><div class="row"><button class="btn ghost" type="button" data-x="no">取消</button><button class="btn primary" type="button" data-x="yes">清空，重新开始</button></div></div>');
 document.body.appendChild(modal);
 modal.onclick=function(e){ var x=e.target.getAttribute("data-x"); if(x==="yes"){ archive(); state=blank(); persist(); location.reload(); } if(x==="no"||e.target===modal) modal.className="modal"; };
 bNew.onclick=function(){ modal.className="modal show"; };
 if(SAVED){ bNew.style.display="none"; }
 
 function summary(){
- var lines=["【Potato成长视频计划】","店名："+(state.shop||"（未填）"),"完成："+allItems().filter(isDone).length+" / "+allItems().length,""];
+ var lines=["【"+M.title+"】",(MODE==="sales"?"题目：":"店名：")+(state.shop||"（未填）"),"完成："+allItems().filter(isDone).length+" / "+allItems().length,""];
  GROUPS.forEach(function(g){ lines.push("■ "+g.name); g.items.forEach(function(i){ var v=i.input?(" ："+((state.info[i.id]||"").trim()||"（未填）")):""; lines.push((isDone(i)?"✅ ":"⬜ ")+i.t+v); }); lines.push(""); });
- if((state.notes||"").trim()) lines.push("备注："+state.notes.trim());
+ if((state.notes||"").trim()) lines.push(M.noteLabel+"："+state.notes.trim());
  return lines.join("\n");
 }
 function copyText(s, msg){
@@ -265,7 +427,7 @@ function copyText(s, msg){
 function fallbackCopy(s, msg){ var t=el("textarea"); t.value=s; document.body.appendChild(t); t.select(); try{ document.execCommand("copy"); toast(msg||"已复制"); }catch(e){ toast("复制不到，请截图"); } t.remove(); }
 bCopy.onclick=function(){ copyText(summary(), "已复制，去 WhatsApp 贴给老板"); };
 function partText(g){
- var lines=["【Potato · "+(state.shop||"未命名店")+"】"+g.name+" ✅ 完成"];
+ var lines=["【Potato · "+(state.shop||M.label)+"】"+g.name+" ✅ 完成"];
  g.items.forEach(function(i){ lines.push("✅ "+i.t+(i.input?" ："+((state.info[i.id]||"").trim()):"")); });
  return lines.join("\n");
 }
@@ -278,12 +440,12 @@ function sendPart(g){
 function snapshot(st){
  st = st || state;
  var css=document.getElementById("css").textContent, app=document.getElementById("app").textContent;
- var snap=JSON.parse(JSON.stringify(st)); if(st===state || !snap.savedAt) snap.savedAt=stamp();
+ var snap=JSON.parse(JSON.stringify(st)); snap.mode=MODE; if(st===state || !snap.savedAt) snap.savedAt=stamp();
  var data=JSON.stringify(snap).replace(/</g,"\\x3c");
  var S="scr"+"ipt";
- return "<!DOCTYPE html>\n<html lang=\"zh\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Potato成长视频计划 · "+esc(st.shop||"未命名店")+"</title><style id=\"css\">"+css+"</style></head><body><"+S+">window.__POTATO_SAVED__="+data+";</"+S+"><"+S+" id=\"app\">"+app+"</"+S+"></body></html>";
+ return "<!DOCTYPE html>\n<html lang=\"zh\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"+esc(M.title)+" · "+esc(st.shop||"未命名")+"</title><style id=\"css\">"+css+"</style></head><body><"+S+">window.__POTATO_SAVED__="+data+";</"+S+"><"+S+" id=\"app\">"+app+"</"+S+"></body></html>";
 }
-function fileName(st){ st = st || state; var n=(st.shop||"未命名店").replace(/[\\\/:*?"<>|\s]+/g,""); return "Potato成长视频计划_"+n+"_"+(st.mmdd||today())+".html"; }
+function fileName(st){ st = st || state; var n=(st.shop||"未命名").replace(/[\\\/:*?"<>|\s]+/g,""); return M.prefix+"_"+n+"_"+(st.mmdd||today())+".html"; }
 
 var downloads=null;
 bSave.style.display = SAVED ? "none" : "";
@@ -301,25 +463,28 @@ function linkSave(name, blob){
  try{
   var url=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=url; a.download=name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},4000);
-  toast("已下载："+name+"（已存进「记录」），去 WhatsApp 发给老板");
+  toast("已下载："+name+"，去 WhatsApp 发给老板");
  }catch(e){ toast("保存不到，请按「复制文字」"); }
 }
 bSave.onclick=function(){
- if(!(state.shop||"").trim()){ toast("先填店名"); shopIn.focus(); return; }
+ if(!(state.shop||"").trim()){ toast(M.nameNeed); shopIn.focus(); return; }
  archive();
  var name=fileName(), html=snapshot();
  if(downloads){
   downloads.save({filename:name, data:html}).then(function(){ toast("已保存："+name); }, function(e){ var c=e&&e.code; if(c==="declined") toast("取消了"); else if(c==="rate_limited") toast("稍等一下再按"); else nativeSave(name, html); });
  } else { nativeSave(name, html); }
 };
+
+// ---- history tab ----
 function renderHist(){
- main3.innerHTML="";
+ var m3 = tabMain("hist"); if(!m3) return;
+ m3.innerHTML="";
  var h=loadHist(), tot=allItems().length;
- if(!h.length){ main3.appendChild(el("div",{class:"empty"},"还没有记录。<br>拍完一间店按「保存 / 发给老板」或「新店」，就会存在这里。")); return; }
- main3.appendChild(el("div",{class:"rule"},"共 "+h.length+" 间店。记录只存在这部手机，换手机前记得每间都发给老板。"));
+ if(!h.length){ m3.appendChild(el("div",{class:"empty"},"还没有记录。<br>按「保存 / 发给老板」或「"+esc(bNew.textContent)+"」，就会存在这里。")); return; }
+ m3.appendChild(el("div",{class:"rule"},"共 "+h.length+" 份。记录只存在这部手机，换手机前记得每份都发给老板。"));
  h.forEach(function(st){
   var done=allItems().filter(function(i){ return isDoneIn(st,i); }).length;
-  var c=el("div",{class:"hist"},"<h3>"+esc(st.shop||"未命名店")+"</h3><div class=\"meta\">"+esc(st.savedAt||"")+" · 完成 "+done+" / "+tot+"</div>");
+  var c=el("div",{class:"hist"},"<h3>"+esc(st.shop||"未命名")+"</h3><div class=\"meta\">"+esc(st.savedAt||"")+" · 完成 "+done+" / "+tot+"</div>");
   var row=el("div",{class:"row"});
   var bv=el("button",{class:"btn ghost",type:"button"},"查看"), br=el("button",{class:"btn primary",type:"button"},"再发一次"), bd=el("button",{class:"btn danger",type:"button"},"删除");
   bv.onclick=function(){ location.hash="view="+encodeURIComponent(st.id); };
@@ -328,10 +493,16 @@ function renderHist(){
    if(bd.getAttribute("data-sure")){ saveHist(loadHist().filter(function(x){ return x.id!==st.id; })); renderHist(); toast("已删除"); return; }
    bd.setAttribute("data-sure","1"); bd.textContent="确定删除？"; setTimeout(function(){ bd.removeAttribute("data-sure"); bd.textContent="删除"; },3000);
   };
-  row.appendChild(bv); row.appendChild(br); row.appendChild(bd); c.appendChild(row); main3.appendChild(c);
+  row.appendChild(bv); row.appendChild(br); row.appendChild(bd); c.appendChild(row); m3.appendChild(c);
  });
 }
-if(!SAVED && location.hash==="#hist") showTab(3);
+
+// ---- start tab ----
+var startTab = TABS[0].kind;
+if(SAVED) startTab = "check";
+else if(location.hash==="#hist") startTab = "hist";
+else { try{ var lt=localStorage.getItem("potato_tab_"+MODE); if(lt && tabMain(lt)) startTab=lt; }catch(e){} }
+showTab(startTab);
 if(!SAVED && window.claude && window.claude.use){ window.claude.use("downloads").then(function(d){ downloads=d; }).catch(function(){}); }
 })();
 </script>
